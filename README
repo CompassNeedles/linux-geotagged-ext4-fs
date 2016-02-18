@@ -8,9 +8,9 @@ CONFIG_GPSFS:
 PART I:
 
 gpsd:
-    defines a hmwk3 style daemon, activated if hmwk6 part 1 debug option
-        DBG_P1 is not set. If debug is set, deamon activity occurs in
-        the shell foreground and prints periodically from within the
+    Daemon code, activated if DBG_P1 is not set.
+        If debug is set, deamon activity occurs in the shell
+        foreground and prints periodically from within the
         poll function (i.e. program is executed normally).
     polls location every 10^6 microseconds (i.e. every second).
     sets location in kernel space every poll time using syscall.
@@ -138,19 +138,11 @@ proc-maps may be necessary.
 
 SAMPLE OUTPUT OF file_loc in the creation of different files:
 =============================================================
-For the terminal saved output of both interaction with the adb shell
-command line and /proc/kmsg during that time please view files:
-"hmwk6-prog/hmwk6_fs_sample/terminal_saved_output_fs_tests"
-and "hmwk6-prog/hmwk6_fs_sample/terminal_saved_output_proc_kmsg".
-Those are the commands which produced state of the filesystem image
-hmwk6.fs with files reflecting the first unique GPS coordinates. We
-duplicated that image into "hmwk6-1.fs", and represent three unique
-GPS coordinates in the more recent copy "hmwk6-2.fs".
 
 ----not a gps_aware_inode ext4 mount point----
 
-root@flo:/data/misc # ./file_loc hmwk6
-Pathname: hmwk6.
+root@flo:/data/misc # ./file_loc gps_aware_ext4_device
+Pathname: gps_aware_ext4_device.
 Error[19]: No such device
 
 ----no such file----
@@ -162,15 +154,15 @@ Error[2]: No such file or directory
 ----gps_aware_inode but no daemon activated so far----
 ----both kernel error [19] ENODEV and accuracy is 0----
 
-127|root@flo:/data/misc # ./file_loc hmwk6
-Pathname: hmwk6.
+127|root@flo:/data/misc # ./file_loc gps_aware_ext4_device
+Pathname: gps_aware_ext4_device.
 Error: No such device (accuracy is zero).
 
 ----finally, the expected output, with age in NANOSECONDS----
 ----we know that since the daemon is currently running Hz----
 
-root@flo:/data/misc # ./file_loc hmwk6/file
-Pathname: hmwk6/file.
+root@flo:/data/misc # ./file_loc gps_aware_ext4_device/file
+Pathname: gps_aware_ext4_device/file.
 Latitude: 40.802966
 Longitude: -73.956366
 Accuracy: 30.000000
@@ -181,27 +173,25 @@ URL: https://www.google.com/maps/@40.802966,-73.956366,15z
 ----Many seconds have elapsed since the daemon last updated----
 ----the kernel with userland polled gps location data----
 
-root@flo:/data/misc # ./file_loc hmwk6
-Pathname: hmwk6.
+root@flo:/data/misc # ./file_loc gps_aware_ext4_device
+Pathname: gps_aware_ext4_device.
 Latitude: 40.802966
 Longitude: -73.956366
 Accuracy: 30.000000
 Age: 14
 URL: https://www.google.com/maps/@40.802966,-73.956366,15z
 
-----We reboot and preserve the same data.----
-----By rebooting, remounting and making more modifications,----
-----we get the 2nd and 3rd unique GPS locations! Note also,----
-----we symlink (both hard and soft). Check the round_2 files----
-----also saved in hmwk6-prog/hmwk6_fs_sample/----
+----We reboot and navigate back into /data/misc/gps_aware_ext4_device----
+----Data is preserved, through reboot.----
+----We demonstrate symlink (both hard and soft).----
 
-root@flo:/data/misc/hmwk6 # ../file_loc d
+root@flo:/data/misc/gps_aware_ext4_device # ../file_loc d
 Pathname: d.
 Error[2]: No such file or directory
 
-255|root@flo:/data/misc/hmwk6 # touch d
+255|root@flo:/data/misc/gps_aware_ext4_device # touch d
 
-root@flo:/data/misc/hmwk6 # ../file_loc d
+root@flo:/data/misc/gps_aware_ext4_device # ../file_loc d
 Pathname: d.
 Latitude: 40.802979
 Longitude: -73.956356
@@ -209,9 +199,9 @@ Accuracy: 23.919001
 Age: 378
 URL: https://www.google.com/maps/@40.802979,-73.956356,15z
 
-root@flo:/data/misc/hmwk6 # ln -s d z
+root@flo:/data/misc/gps_aware_ext4_device # ln -s d z
 
-root@flo:/data/misc/hmwk6 # ls -l
+root@flo:/data/misc/gps_aware_ext4_device # ls -l
 -rw-rw-rw- root     root            0 2015-12-14 18:57 a
 drwxrwxrwx root     root              2015-12-14 18:58 abcd
 -rw-rw-rw- root     root            0 2015-12-14 18:57 b
@@ -221,7 +211,7 @@ drwxrwxrwx root     root              2015-12-14 18:58 abcd
 drwx------ root     root              2015-12-14 18:47 lost+found
 lrwxrwxrwx root     root              2015-12-14 20:24 z -> d
 
-root@flo:/data/misc/hmwk6 # ../file_loc d
+root@flo:/data/misc/gps_aware_ext4_device # ../file_loc d
 Pathname: d.
 Latitude: 40.802979
 Longitude: -73.956356
@@ -229,7 +219,7 @@ Accuracy: 23.919001
 Age: 378
 URL: https://www.google.com/maps/@40.802979,-73.956356,15z
 
-root@flo:/data/misc/hmwk6 # ../file_loc z
+root@flo:/data/misc/gps_aware_ext4_device # ../file_loc z
 Pathname: z.
 Latitude: 40.802979
 Longitude: -73.956356
@@ -237,9 +227,9 @@ Accuracy: 23.919001
 Age: 378
 URL: https://www.google.com/maps/@40.802979,-73.956356,15z
 
-root@flo:/data/misc/hmwk6 # ../gpsd
-root@flo:/data/misc/hmwk6 # ln -s d w
-root@flo:/data/misc/hmwk6 # ../file_loc w
+root@flo:/data/misc/gps_aware_ext4_device # ../gpsd
+root@flo:/data/misc/gps_aware_ext4_device # ln -s d w
+root@flo:/data/misc/gps_aware_ext4_device # ../file_loc w
 Pathname: w.
 Latitude: 40.802979
 Longitude: -73.956356
@@ -247,7 +237,7 @@ Accuracy: 23.919001
 Age: 378
 URL: https://www.google.com/maps/@40.802979,-73.956356,15z
 
-root@flo:/data/misc/hmwk6 # ../file_loc d
+root@flo:/data/misc/gps_aware_ext4_device # ../file_loc d
 Pathname: d.
 Latitude: 40.802979
 Longitude: -73.956356
@@ -255,10 +245,10 @@ Accuracy: 23.919001
 Age: 378
 URL: https://www.google.com/maps/@40.802979,-73.956356,15z
 
-root@flo:/data/misc/hmwk6 # ps | grep gpsd
+root@flo:/data/misc/gps_aware_ext4_device # ps | grep gpsd
 root      4417  1     876    156   c009a470 0004f6dc S ../gpsd
 
-root@flo:/data/misc/hmwk6 # ../file_loc .
+root@flo:/data/misc/gps_aware_ext4_device # ../file_loc .
 Pathname: ..
 Latitude: 40.802987
 Longitude: -73.956371
@@ -266,26 +256,22 @@ Accuracy: 24.414000
 Age: 350341798
 URL: https://www.google.com/maps/@40.802987,-73.956371,15z
 
-----As a last example, we change permissions and try file_loc.----
----- See _round_3 tests in hmwk6-prog/hmwk6_fs_sample/ for  ----
-----  a repetition of all hmwk6 file loc and age readings  ----
-----(they should not have changed from the previous files)----
+----As a last example, we change permissions and try file_loc:----
 
-root@flo:/data/misc # ./file_loc hmwk6/file
-Pathname: hmwk6/file.
+root@flo:/data/misc # ./file_loc gps_aware_ext4_device/file
+Pathname: gps_aware_ext4_device/file.
 Latitude: 40.802966
 Longitude: -73.956366
 Accuracy: 30.000000
 Age: 1
 URL: https://www.google.com/maps/@40.802966,-73.956366,15z
 
-root@flo:/data/misc # chmod 222 hmwk6/file
+root@flo:/data/misc # chmod 222 gps_aware_ext4_device/file
 
-root@flo:/data/misc # ./file_loc hmwk6/file
-Pathname: hmwk6/file.
+root@flo:/data/misc # ./file_loc gps_aware_ext4_device/file
+Pathname: gps_aware_ext4_device/file.
 Error[13]: Permission denied
 
 255|root@flo:/data/misc #
 
-----We save the most up-to-date hmwk6.fs image as hmwk6-3.fs----
 
