@@ -1477,6 +1477,10 @@ do_indirects:
 out_unlock:
 	up_write(&ei->i_data_sem);
 	inode->i_mtime = inode->i_ctime = ext4_current_time(inode);
+#ifdef CONFIG_GPSFS
+	if (test_opt(inode->i_sb, GPS_AWARE_INODE))
+		inode->i_op->set_gps_location(inode);
+#endif
 	ext4_mark_inode_dirty(handle, inode);
 
 	/*

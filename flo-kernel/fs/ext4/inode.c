@@ -38,6 +38,10 @@
 #include <linux/slab.h>
 #include <linux/ratelimit.h>
 
+#ifdef CONFIG_GPSFS
+#include "gps.h"
+#endif
+
 #include "ext4_jbd2.h"
 #include "xattr.h"
 #include "acl.h"
@@ -3921,6 +3925,10 @@ static int ext4_do_update_inode(handle_t *handle,
 		raw_inode->i_file_acl_high =
 			cpu_to_le16(ei->i_file_acl >> 32);
 	raw_inode->i_file_acl_lo = cpu_to_le32(ei->i_file_acl);
+#ifdef CONFIG_GPSFS
+	if (test_opt(inode->i_sb, GPS_AWARE_INODE))
+		set_gps_location_ext4(inode);
+#endif
 	ext4_isize_set(raw_inode, ei->i_disksize);
 	if (ei->i_disksize > 0x7fffffffULL) {
 		struct super_block *sb = inode->i_sb;
@@ -3971,8 +3979,8 @@ static int ext4_do_update_inode(handle_t *handle,
 	if (!err)
 		err = rc;
 	ext4_clear_inode_state(inode, EXT4_STATE_NEW);
-
 	ext4_update_inode_fsync_trans(handle, inode, 0);
+
 out_brelse:
 	brelse(bh);
 	ext4_std_error(inode->i_sb, err);

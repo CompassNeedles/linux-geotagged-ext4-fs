@@ -1141,3 +1141,89 @@ int nonseekable_open(struct inode *inode, struct file *filp)
 }
 
 EXPORT_SYMBOL(nonseekable_open);
+
+#ifdef CONFIG_GPSFS
+
+/* Somewhat hacky. */
+
+int
+get_path_gps_aware_inode_data(const char *pathname, struct gps_location *coord,
+	long *age)
+{
+	struct inode *ino = NULL;
+	struct path p;
+	struct file *f = NULL;
+	struct open_flags op;
+	int error;
+	/* unsigned int flags; */
+	const char *fs_type;
+	int len = strlen("ext4");
+
+	/* See implementation include/linux/audit.h */
+	char *name = getname(pathname);
+
+	if (IS_ERR(name))
+		return -ENOENT;
+
+	/* This should set op 'mode', 'acc_mode' and 'intent' to 0
+	 * and 'flags' to
+	 * 'O_DIRECTORY | O_NOFOLLOW | O_PATH' (see fs/open.c).
+	 */
+	error = build_open_flags(O_PATH, 0, &op);
+	f = do_filp_open(AT_FDCWD, name, &op, error);
+
+	/* Alternatively:
+	 * flags = LOOKUP_FOLLOW|LOOKUP_REVAL|LOOKUP_JUMPED|LOOKUP_EMPTY;
+	 * error = kern_path(name, flags, &p);
+	 */
+
+	/* Ignore symlinks. */
+	if (IS_ERR(f))
+		return -ENOENT;
+
+	if (unlikely(	!f ||
+					!(f->f_path.dentry) ||
+					!(f->f_path.dentry->d_inode)))
+		return -ENODEV;
+
+	p = f->f_path;
+	ino = p.dentry->d_inode;
+
+	if (!(ino->i_mode & S_IROTH) &&
+		!( (ino->i_uid == current_uid()) && (ino->i_mode & S_IRUSR)) &&
+		!( (ino->i_gid == current_gid()) && (ino->i_mode & S_IRGRP)) )
+		return -EACCES;
+
+	/* No reader lock acquired for superblock/type and nameidata/path
+	 * mount.
+	 * Open file may implicitly protect superblock data structures
+	 * (we open with O_PATH).
+	 */
+	if (!(p.mnt) ||
+		!(p.mnt->mnt_sb) ||
+		!(p.mnt->mnt_sb->s_type) ||
+		!(p.mnt->mnt_sb->s_type->name))
+		return -ENODEV;
+
+	fs_type = p.mnt->mnt_sb->s_type->name;
+
+	if (!(	strlen(fs_type) == len &&
+			strncmp(fs_type, "ext4", len) == 0))
+		return -EINVAL;
+
+	if ((error = ino->i_op->gps_info(ino, coord, age)))
+		return error;
+
+	/* filp_close releases "a" lock in code (posix), via
+	 * nd->inode->i_flock->fl_owner, which implies some
+	 * level of protection.
+	 */
+	if (ino->i_flock)
+		filp_close(f, ino->i_flock->fl_owner);
+	else 
+		filp_close(f, NULL);
+
+	return 0;
+}
+
+#endif

@@ -405,6 +405,11 @@
 #define __NR_process_vm_readv		(__NR_SYSCALL_BASE+376)
 #define __NR_process_vm_writev		(__NR_SYSCALL_BASE+377)
 
+#ifdef CONFIG_GPSFS
+#define __NR_set_gps_location		(__NR_SYSCALL_BASE+378)
+#define __NR_get_gps_location		(__NR_SYSCALL_BASE+379)
+#endif
+
 /*
  * The following SWIs are ARM private.
  */

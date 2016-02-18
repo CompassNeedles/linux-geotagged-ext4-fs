@@ -2408,6 +2408,12 @@ config ARCH_SUSPEND_POSSIBLE
 config ARM_CPU_SUSPEND
 	def_bool PM_SLEEP
 
+config GEO_FS
+	bool
+	default y
+	help
+	  Adds in geo-tag-enabled filesystem changes
+
 endmenu
 
 source "net/Kconfig"

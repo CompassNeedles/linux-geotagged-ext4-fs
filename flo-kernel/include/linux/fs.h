@@ -11,14 +11,18 @@
 #include <linux/blk_types.h>
 #include <linux/types.h>
 
+#ifdef CONFIG_GPSFS
+#include <linux/gps.h>
+#endif
+
 /*
  * It's silly to have NR_OPEN bigger than NR_FILE, but you can change
  * the file limit at runtime and only root can increase the per-process
  * nr_file rlimit, so it's safe to set up a ridiculously high absolute
  * upper limit on files-per-process.
  *
- * Some programs (notably those using select()) may have to be 
- * recompiled to take full advantage of the new limits..  
+ * Some programs (notably those using select()) may have to be
+ * recompiled to take full advantage of the new limits..
  */
 
 /* Fixed constants first: */
@@ -69,7 +73,8 @@ struct inodes_stat_t {
 #define MAY_NOT_BLOCK		0x00000080
 
 /*
- * flags in file.f_mode.  Note that FMODE_READ and FMODE_WRITE must correspond
+ * flags in file.f_mode.  Note that FMODE_READ and
+ * FMODE_WRITE must correspond
  * to O_WRONLY and O_RDWR via the strange trick in __dentry_open()
  */
 
@@ -101,7 +106,8 @@ struct inodes_stat_t {
  * Don't update ctime and mtime.
  *
  * Currently a special hack for the XFS open_by_handle ioctl, but we'll
- * hopefully graduate it to a proper O_CMTIME flag supported by open(2) soon.
+ * hopefully graduate it to a proper O_CMTIME flag supported by open(2)
+ * soon.
  */
 #define FMODE_NOCMTIME		((__force fmode_t)0x800)
 
@@ -118,7 +124,8 @@ struct inodes_stat_t {
 #define FMODE_NONOTIFY		((__force fmode_t)0x1000000)
 
 /*
- * The below are the various read and write types that we support. Some of
+ * The below are the various read and write types that we support.
+ * Some of
  * them include behavioral modifiers that send information down to the
  * block layer and IO scheduler. Terminology:
  *
@@ -140,22 +147,22 @@ struct inodes_stat_t {
  * With that in mind, the available types are:
  *
  * READ			A normal read operation. Device will be plugged.
- * READ_SYNC		A synchronous read. Device is not plugged, caller can
+ * READ_SYNC	A synchronous read. Device is not plugged, caller can
  *			immediately wait on this read without caring about
  *			unplugging.
  * READA		Used for read-ahead operations. Lower priority, and the
  *			block layer could (in theory) choose to ignore this
  *			request if it runs into resource problems.
  * WRITE		A normal async write. Device will be plugged.
- * WRITE_SYNC		Synchronous write. Identical to WRITE, but passes down
+ * WRITE_SYNC	Synchronous write. Identical to WRITE, but passes down
  *			the hint that someone will be waiting on this IO
  *			shortly. The write equivalent of READ_SYNC.
  * WRITE_ODIRECT	Special case write for O_DIRECT only.
  * WRITE_FLUSH		Like WRITE_SYNC but with preceding cache flush.
  * WRITE_FUA		Like WRITE_SYNC but data is guaranteed to be on
  *			non-volatile media on completion.
- * WRITE_FLUSH_FUA	Combination of WRITE_FLUSH and FUA. The IO is preceded
- *			by a cache flush and data is guaranteed to be on
+ * WRITE_FLUSH_FUA	Combination of WRITE_FLUSH and FUA. The IO is
+ *			preceded by a cache flush and data is guaranteed to be on
  *			non-volatile media on completion.
  *
  */
@@ -171,23 +178,26 @@ struct inodes_stat_t {
 #define WRITE_ODIRECT		(WRITE | REQ_SYNC)
 #define WRITE_FLUSH		(WRITE | REQ_SYNC | REQ_NOIDLE | REQ_FLUSH)
 #define WRITE_FUA		(WRITE | REQ_SYNC | REQ_NOIDLE | REQ_FUA)
-#define WRITE_FLUSH_FUA		(WRITE | REQ_SYNC | REQ_NOIDLE | REQ_FLUSH | REQ_FUA)
+#define WRITE_FLUSH_FUA		\
+	(WRITE | REQ_SYNC | REQ_NOIDLE | REQ_FLUSH | REQ_FUA)
 
 #define SEL_IN		1
 #define SEL_OUT		2
 #define SEL_EX		4
 
 /* public flags for file_system_type */
-#define FS_REQUIRES_DEV 1 
+#define FS_REQUIRES_DEV 1
 #define FS_BINARY_MOUNTDATA 2
 #define FS_HAS_SUBTYPE 4
-#define FS_REVAL_DOT	16384	/* Check the paths ".", ".." for staleness */
+#define FS_REVAL_DOT	16384
+/* Check the paths ".", ".." for staleness */
 #define FS_RENAME_DOES_D_MOVE	32768	/* FS will handle d_move()
 					 * during rename() internally.
 					 */
 
 /*
- * These are the fs-independent mount-flags: up to 32 flags are supported
+ * These are the fs-independent mount-flags: up to 32 flags are
+ * supported
  */
 #define MS_RDONLY	 1	/* Mount read-only */
 #define MS_NOSUID	 2	/* Ignore suid and sgid bits */
@@ -311,7 +321,8 @@ struct inodes_stat_t {
 /* A jump here: 108-111 have been used for various private purposes. */
 #define BLKBSZGET  _IOR(0x12,112,size_t)
 #define BLKBSZSET  _IOW(0x12,113,size_t)
-#define BLKGETSIZE64 _IOR(0x12,114,size_t)	/* return device size in bytes (u64 *arg) */
+#define BLKGETSIZE64 _IOR(0x12,114,size_t)
+/* return device size in bytes (u64 *arg) */
 #define BLKTRACESETUP _IOWR(0x12,115,struct blk_user_trace_setup)
 #define BLKTRACESTART _IO(0x12,116)
 #define BLKTRACESTOP _IO(0x12,117)
@@ -490,7 +501,7 @@ struct iattr {
  */
 #include <linux/quota.h>
 
-/** 
+/**
  * enum positive_aop_returns - aop return codes with specific semantics
  *
  * @AOP_WRITEPAGE_ACTIVATE: Informs the caller that page writeback has
@@ -500,7 +511,7 @@ struct iattr {
  * 			    be a candidate for writeback again in the near
  * 			    future.  Other callers must be careful to unlock
  * 			    the page if they get this return.  Returned by
- * 			    writepage(); 
+ *                             writepage();
  *
  * @AOP_TRUNCATED_PAGE: The AOP method that was handed a locked page has
  *  			unlocked it and the page might have been truncated.
@@ -1078,10 +1089,10 @@ static inline int file_check_writeable(struct file *filp)
 
 #define	MAX_NON_LFS	((1UL<<31) - 1)
 
-/* Page cache limit. The filesystems should put that into their s_maxbytes 
-   limits, otherwise bad things can happen in VM. */ 
+/* Page cache limit. The filesystems should put that into their s_maxbytes
+   limits, otherwise bad things can happen in VM. */
 #if BITS_PER_LONG==32
-#define MAX_LFS_FILESIZE	(((u64)PAGE_CACHE_SIZE << (BITS_PER_LONG-1))-1) 
+#define MAX_LFS_FILESIZE	(((u64)PAGE_CACHE_SIZE << (BITS_PER_LONG-1))-1)
 #elif BITS_PER_LONG==64
 #define MAX_LFS_FILESIZE 	0x7fffffffffffffffUL
 #endif
@@ -1665,7 +1676,17 @@ struct inode_operations {
 	void (*truncate_range)(struct inode *, loff_t, loff_t);
 	int (*fiemap)(struct inode *, struct fiemap_extent_info *, u64 start,
 		      u64 len);
+#ifdef CONFIG_GPSFS
+	int (*set_gps_location)(struct inode *);
+	int (*get_gps_location)(struct inode *, struct gps_location *);
+	int (*gps_info)(struct inode *, struct gps_location *, unsigned long *);
+#endif
 } ____cacheline_aligned;
+
+#ifdef CONFIG_GPSFS
+extern int get_path_gps_aware_inode_data(const char *pathname, 
+			      struct gps_location *coord, long *age);
+#endif
 
 struct seq_file;
 
@@ -2282,7 +2303,7 @@ extern void free_write_pipe(struct file *);
 
 extern int kernel_read(struct file *, loff_t, char *, unsigned long);
 extern struct file * open_exec(const char *);
- 
+
 /* fs/dcache.c -- generic fs support functions */
 extern int is_subdir(struct dentry *, struct dentry *);
 extern int path_is_under(struct path *, struct path *);

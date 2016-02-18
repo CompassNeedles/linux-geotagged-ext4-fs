@@ -23,6 +23,10 @@
 #include "ext4.h"
 #include "xattr.h"
 
+#ifdef CONFIG_GPSFS
+#include "gps.h"
+#endif
+
 static void *ext4_follow_link(struct dentry *dentry, struct nameidata *nd)
 {
 	struct ext4_inode_info *ei = EXT4_I(dentry->d_inode);
@@ -41,6 +45,11 @@ const struct inode_operations ext4_symlink_inode_operations = {
 	.listxattr	= ext4_listxattr,
 	.removexattr	= generic_removexattr,
 #endif
+#ifdef CONFIG_GPSFS
+	.get_gps_location = get_gps_location_ext4,
+	.set_gps_location = set_gps_location_ext4,
+	.gps_info = gps_info_ext4,
+#endif
 };
 
 const struct inode_operations ext4_fast_symlink_inode_operations = {
@@ -52,5 +61,10 @@ const struct inode_operations ext4_fast_symlink_inode_operations = {
 	.getxattr	= generic_getxattr,
 	.listxattr	= ext4_listxattr,
 	.removexattr	= generic_removexattr,
+#endif
+#ifdef CONFIG_GPSFS
+	.get_gps_location = get_gps_location_ext4,
+	.set_gps_location = set_gps_location_ext4,
+	.gps_info = gps_info_ext4,
 #endif
 };

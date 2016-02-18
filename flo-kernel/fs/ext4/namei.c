@@ -40,6 +40,10 @@
 #include "xattr.h"
 #include "acl.h"
 
+#ifdef CONFIG_GPSFS
+#include "gps.h"
+#endif
+
 #include <trace/events/ext4.h>
 /*
  * define how far ahead to read directories while searching them.
@@ -1759,6 +1763,11 @@ retry:
 	err = PTR_ERR(inode);
 	if (!IS_ERR(inode)) {
 		inode->i_op = &ext4_file_inode_operations;
+#ifdef CONFIG_GPSFS
+		if (test_opt(inode->i_sb, GPS_AWARE_INODE))
+			inode->i_op->set_gps_location(inode);
+#endif
+
 		inode->i_fop = &ext4_file_operations;
 		ext4_set_aops(inode);
 		err = ext4_add_nondir(handle, dentry, inode);
@@ -1797,6 +1806,10 @@ retry:
 		init_special_inode(inode, inode->i_mode, rdev);
 #ifdef CONFIG_EXT4_FS_XATTR
 		inode->i_op = &ext4_special_inode_operations;
+#ifdef CONFIG_GPSFS
+		if (test_opt(inode->i_sb, GPS_AWARE_INODE))
+			inode->i_op->set_gps_location(inode);
+#endif
 #endif
 		err = ext4_add_nondir(handle, dentry, inode);
 	}
@@ -1882,6 +1895,10 @@ out_clear_inode:
 	if (err)
 		goto out_clear_inode;
 	d_instantiate(dentry, inode);
+#ifdef CONFIG_GPSFS
+	if (test_opt(inode->i_sb, GPS_AWARE_INODE))
+		inode->i_op->set_gps_location(inode);
+#endif
 	unlock_new_inode(inode);
 out_stop:
 	brelse(dir_block);
@@ -2331,6 +2348,10 @@ retry:
 	}
 	EXT4_I(inode)->i_disksize = inode->i_size;
 	err = ext4_add_nondir(handle, dentry, inode);
+#ifdef CONFIG_GPSFS
+	if (test_opt(inode->i_sb, GPS_AWARE_INODE))
+		inode->i_op->set_gps_location(inode);
+#endif
 out_stop:
 	ext4_journal_stop(handle);
 	if (err == -ENOSPC && ext4_should_retry_alloc(dir->i_sb, &retries))
@@ -2587,6 +2608,11 @@ const struct inode_operations ext4_dir_inode_operations = {
 #endif
 	.get_acl	= ext4_get_acl,
 	.fiemap         = ext4_fiemap,
+#ifdef CONFIG_GPSFS
+	.get_gps_location = get_gps_location_ext4,
+	.set_gps_location = set_gps_location_ext4,
+	.gps_info = gps_info_ext4,
+#endif
 };
 
 const struct inode_operations ext4_special_inode_operations = {
@@ -2598,4 +2624,9 @@ const struct inode_operations ext4_special_inode_operations = {
 	.removexattr	= generic_removexattr,
 #endif
 	.get_acl	= ext4_get_acl,
+#ifdef CONFIG_GPSFS
+	.get_gps_location = get_gps_location_ext4,
+	.set_gps_location = set_gps_location_ext4,
+	.gps_info = gps_info_ext4,
+#endif
 };

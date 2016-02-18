@@ -673,6 +673,12 @@ struct ext4_inode {
 	__le32  i_crtime;       /* File Creation time */
 	__le32  i_crtime_extra; /* extra FileCreationtime (nsec << 2 | epoch) */
 	__le32  i_version_hi;	/* high 32 bits for 64-bit version */
+#ifdef CONFIG_GPSFS
+	__u64 i_latitude;
+	__u64 i_longitude;
+	__u32 i_accuracy;
+	__u32 i_coord_age;
+#endif
 };
 
 struct move_extent {
@@ -951,6 +957,9 @@ struct ext4_inode_info {
 #define EXT4_MOUNT_DIOREAD_NOLOCK	0x400000 /* Enable support for dio read nolocking */
 #define EXT4_MOUNT_JOURNAL_CHECKSUM	0x800000 /* Journal checksums */
 #define EXT4_MOUNT_JOURNAL_ASYNC_COMMIT	0x1000000 /* Journal Async Commit */
+#ifdef CONFIG_GPSFS
+#define EXT4_MOUNT_GPS_AWARE_INODE	0x2000000 /* GPS data */
+#endif
 #define EXT4_MOUNT_MBLK_IO_SUBMIT	0x4000000 /* multi-block io submits */
 #define EXT4_MOUNT_DELALLOC		0x8000000 /* Delalloc support */
 #define EXT4_MOUNT_DATA_ERR_ABORT	0x10000000 /* Abort on file data write */

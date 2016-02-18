@@ -24,6 +24,9 @@
 #include <linux/mount.h>
 #include <linux/path.h>
 #include <linux/quotaops.h>
+#ifdef CONFIG_GPSFS
+#include "gps.h"
+#endif
 #include "ext4.h"
 #include "ext4_jbd2.h"
 #include "xattr.h"
@@ -258,5 +261,10 @@ const struct inode_operations ext4_file_inode_operations = {
 #endif
 	.get_acl	= ext4_get_acl,
 	.fiemap		= ext4_fiemap,
+#ifdef CONFIG_GPSFS
+	.get_gps_location = get_gps_location_ext4,
+	.set_gps_location = set_gps_location_ext4,
+	.gps_info = gps_info_ext4,
+#endif
 };
 

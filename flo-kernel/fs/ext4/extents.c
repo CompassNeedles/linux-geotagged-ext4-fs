@@ -4225,6 +4225,10 @@ out_stop:
 		ext4_orphan_del(handle, inode);
 
 	inode->i_mtime = inode->i_ctime = ext4_current_time(inode);
+#ifdef CONFIG_GPSFS
+	if (test_opt(inode->i_sb, GPS_AWARE_INODE))
+		inode->i_op->set_gps_location(inode);
+#endif
 	ext4_mark_inode_dirty(handle, inode);
 	ext4_journal_stop(handle);
 }
@@ -4824,10 +4828,15 @@ int ext4_ext_punch_hole(struct file *file, loff_t offset, loff_t length)
 out:
 	ext4_orphan_del(handle, inode);
 	inode->i_mtime = inode->i_ctime = ext4_current_time(inode);
+#ifdef CONFIG_GPSFS
+	if (test_opt(inode->i_sb, GPS_AWARE_INODE))
+		inode->i_op->set_gps_location(inode);
+#endif
 	ext4_mark_inode_dirty(handle, inode);
 	ext4_journal_stop(handle);
 	return err;
 }
+
 int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
 		__u64 start, __u64 len)
 {

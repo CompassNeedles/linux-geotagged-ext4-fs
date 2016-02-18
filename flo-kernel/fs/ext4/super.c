@@ -1186,6 +1186,9 @@ enum {
 	Opt_inode_readahead_blks, Opt_journal_ioprio,
 	Opt_dioread_nolock, Opt_dioread_lock,
 	Opt_discard, Opt_nodiscard, Opt_init_itable, Opt_noinit_itable,
+#ifdef CONFIG_GPSFS
+	Opt_gps_aware_inode,
+#endif
 };
 
 static const match_table_t tokens = {
@@ -1259,6 +1262,9 @@ static const match_table_t tokens = {
 	{Opt_init_itable, "init_itable=%u"},
 	{Opt_init_itable, "init_itable"},
 	{Opt_noinit_itable, "noinit_itable"},
+#ifdef CONFIG_GPSFS
+	{Opt_gps_aware_inode, "gps_aware_inode"},
+#endif
 	{Opt_removed, "check=none"},	/* mount option from ext2/3 */
 	{Opt_removed, "nocheck"},	/* mount option from ext2/3 */
 	{Opt_removed, "reservation"},	/* mount option from ext2/3 */
@@ -1389,6 +1395,11 @@ static const struct mount_opts {
 	{Opt_journal_checksum, EXT4_MOUNT_JOURNAL_CHECKSUM, MOPT_SET},
 	{Opt_journal_async_commit, (EXT4_MOUNT_JOURNAL_ASYNC_COMMIT |
 				    EXT4_MOUNT_JOURNAL_CHECKSUM), MOPT_SET},
+
+#ifdef CONFIG_GPSFS
+	{Opt_gps_aware_inode, EXT4_MOUNT_GPS_AWARE_INODE, MOPT_CLEAR},
+#endif
+
 	{Opt_noload, EXT4_MOUNT_NOLOAD, MOPT_SET},
 	{Opt_err_panic, EXT4_MOUNT_ERRORS_PANIC, MOPT_SET | MOPT_CLEAR_ERR},
 	{Opt_err_ro, EXT4_MOUNT_ERRORS_RO, MOPT_SET | MOPT_CLEAR_ERR},
@@ -1463,6 +1474,11 @@ static int handle_mount_opt(struct super_block *sb, char *opt, int token,
 	if (args->from && match_int(args, &arg))
 		return -1;
 	switch (token) {
+#ifdef CONFIG_GPSFS
+	case Opt_gps_aware_inode:
+		set_opt(sb, GPS_AWARE_INODE);
+		return 1;
+#endif
 	case Opt_noacl:
 	case Opt_nouser_xattr:
 		ext4_msg(sb, KERN_WARNING, deprecated_msg, opt, "3.5");
