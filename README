@@ -1,0 +1,289 @@
+Author: Sami Mourad
+
+CONFIG_GPSFS:
+    enabled by default.
+    defined in arch/arm/Kconfig.
+    used to add and compile in kernel changes made to the ext FS.
+
+PART I:
+
+gpsd:
+    defines a hmwk3 style daemon, activated if hmwk6 part 1 debug option
+        DBG_P1 is not set. If debug is set, deamon activity occurs in
+        the shell foreground and prints periodically from within the
+        poll function (i.e. program is executed normally).
+    polls location every 10^6 microseconds (i.e. every second).
+    sets location in kernel space every poll time using syscall.
+    in daemon mode all standard "stream" descriptors are closed (0,1,2)
+        error messages are buffered to a gpsd log file.
+
+kernel/gps.c:
+    implements interface defined in header file include/linux/gps.h.
+    defines set_gps_location syscall called by gpsd.
+    updates kernel with device current location, also storing the update
+        time at which this happens (so that whenever the fs member is
+        modified - and only then, the age of the coordinates is updated
+        in the corresponding inode via the inode_operations interface).
+    uses current_uid to check if current user is system administrator
+    (i.e. if uid is 0).
+
+PART II:
+
+include/linux/fs.h:
+    declares (vfs) inode_operations interface additions and a
+    gps_aware_inode (ext4) kernel utility funciton for use within the
+    get_gps_location syscall of part 3.
+
+fs/ext4/gps.h, gps.c:
+    implements the gps-ext4 interface functions added to the set of
+        inode_operations (namely, set_gps_location_ext4(),
+        get_gps_location_ext4() and gps_info_ext4()).
+
+    set_gps_location_ext4 gets a hold of the ext4_inode struct to which
+        the gps coordinate data members have been added and simply
+        copies over from gps data *already in the kernel*. The data in
+        the kernel might be stale (it is time stamped). The age is
+        calculated as the difference between current kernel time and
+        the time stamp of the gps data in the kernel (please see comments -
+        we allow resolution to switch over from nanoseconds to seconds,
+        which can be easily deduced in userspace based on whether the daemon
+        is running at the time of file geo tag reading).
+        -
+        Uses kernel-gps to ext4-gps interface functions defined in kernel/gps.c
+        to get kernel "current location" i.e. latitude, longitude and 
+        accuracy, as well as last_gps_update_time (or timestamp). Note
+        that we simply memcpy everywhere and do not worry about endian-
+        ness of the data. Data swizzling is implemented in the _ext4
+        (fs/ext4/gps.h, gps.c) functions, since those are executed as part of
+        inode_operations and therefore wherever we write to the disk, from
+        which the data can be ported and read by another architecture.
+        Therefore, the most important thing is to ensure that endianness of 
+        disk write is selected and writing/reading order for the specific
+        architecture is set correctly (using the cpu-to-endian conversion
+        macros).
+
+    Where/when does set_gps_location_ext4 happen?
+        - fs/ext4/namei.c: for all of ext4_file_, ext4_dir_, ext4_special_,
+            ext4_symlink_, ext4_fast_symlink_, inode_operations.
+            When: ext4_create(), _mknod(), _mkdir(), and _symlink()
+            (incl. making fast symlink), but not _rename().
+            Why? Because these are all the places where inodes are created.
+            And also:
+        - fs/ext4/inode.c: in ext4_do_update_inode(), which does not operate
+            via the inode but directly calls the set_gps_location_ext4
+            method, since i_op are not (always) set there for the inode.
+            Note: this function is called when an inode is modified.
+        - We further call inode->i_op->set_gps_location() in
+            fs/ext4/extents.c in ext4_ext_truncate() and
+            ext4_ext_punch_hole(), since these modify file (or node)
+            contents as well, and in fs/ext4/indirect.c
+            ext4_ind_truncate(). This should update "current location"
+            if it has changed in the kernel or simply update age
+            if the data is stale (and the timestamp has not changed).
+            In particular, we searched and added the calls wherever
+            (ext4_)inode->mtime is changed, and if not ext4_rmdir(),
+            ext4_unlink() or ext4_rename(), all in ext4/namei.c. Also,
+            we do not do this in add_dirent_to_buf() since it calls
+            ext4_new_inode(), therefore we do not set_gps_location at
+            all in ext4/namei.c.
+
+fs/ext4/super.c:
+    adds case: mount option gps_aware_inode in handle_mount_opt() also
+    updating mount options, option enum and the match table tokens.
+    Mount flag is defined in fs/ext4/ext4.h.
+
+PART III:
+
+kernel/gps.c:
+    implements syscall "get_gps_location".
+    calls include/linux/fs.h fs/ utility function (which checks for
+        ext4 and gps_aware_inode after searching for the inode given
+        pathname): get_path_gps_aware_inode_data(). The fcn also copies
+        over the ext4 fs member "current location" record and age at the
+        time that the location was written to the fs member when it was
+        created/modified. If get_path_gps_aware_inode_data() errors 
+        that error number is returned to userspace, otherwise returned
+        are age and userspace gps location struct updated with the ext4
+        fs object's gps_location.
+
+fs/open.c:
+    implements get_path_gps_aware_inode_data, which uses get_filp_open()
+    from fs/open.c. get_path_gps_aware_inode_data:
+        first gets a reference to file at pathname (returning pointer)
+        with flags O_PATH (which do not allow very limited access to
+        the file), using do_filp_open().
+- - we close the file after we are done reading filesystem info
+    and assume this does the job of "adequately" protecting the 
+    validity/relevance/persistence of the data while it is being accessed - -
+        returns EFAULT if file is not opened properly.
+        reads fs type (want "ext4") without locking in accessing dentry,
+            inode, vfs_mnt point, superblock from file pointer;
+            returns EINVAL if not "ext4".
+        accesses the (ext4) inode gps coordinate/age data via inode->
+            i_op function gps_info(), which tests for the superblock
+            mount option (gps_aware_inode).
+
+To summarize, the primary ext4 changes are added as follows:
+* In namei.c (only places adding set_gps_location where setting i_op):
+    when mkdir, mknod, create and symlink
+* In ext4_do_update_inode from inode.c, but not ext4_iget. Where EXT4_
+    INODE_SET_XTIME, but not where EXT4_INODE_GET_XTIME (respectively).
+* Truncation in indirect.c, and extents.c (including punch_hole)
+    where resetting mtime = ctime = current time...
+
+Note: we disable printing at the end (after testing) to prevent
+watchdog from getting triggered.
+
+SAMPLE OUTPUT OF file_loc in the creation of different files:
+=============================================================
+For the terminal saved output of both interaction with the adb shell
+command line and /proc/kmsg during that time please view files:
+"hmwk6-prog/hmwk6_fs_sample/terminal_saved_output_fs_tests"
+and "hmwk6-prog/hmwk6_fs_sample/terminal_saved_output_proc_kmsg".
+Those are the commands which produced state of the filesystem image
+hmwk6.fs with files reflecting the first unique GPS coordinates. We
+duplicated that image into "hmwk6-1.fs", and represent three unique
+GPS coordinates in the more recent copy "hmwk6-2.fs".
+
+// not a gps_aware_inode ext4 mount point //
+
+root@flo:/data/misc # ./file_loc hmwk6
+Pathname: hmwk6.
+Error[19]: No such device
+
+// no such file //
+
+255|root@flo:/data/misc # ./file_loc bogus_file
+Pathname: bogus_file.
+Error[2]: No such file or directory
+
+// gps_aware_inode but no daemon activated so far //
+// both kernel error [19] ENODEV and accuracy is 0 //
+
+127|root@flo:/data/misc # ./file_loc hmwk6
+Pathname: hmwk6.
+Error: No such device (accuracy is zero).
+
+// finally, the expected output, with age in NANOSECONDS //
+// we know that since the daemon is currently running Hz //
+
+root@flo:/data/misc # ./file_loc hmwk6/file
+Pathname: hmwk6/file.
+Latitude: 40.802966
+Longitude: -73.956366
+Accuracy: 30.000000
+Age: 150146485
+URL: https://www.google.com/maps/@40.802966,-73.956366,15z
+
+// we kill the daemon and touch a new file in the directory //
+// Many seconds have elapsed since the daemon last updated //
+// the kernel with userland polled gps location data //
+
+root@flo:/data/misc # ./file_loc hmwk6
+Pathname: hmwk6.
+Latitude: 40.802966
+Longitude: -73.956366
+Accuracy: 30.000000
+Age: 14
+URL: https://www.google.com/maps/@40.802966,-73.956366,15z
+
+// We reboot and preserve the same data. //
+// By rebooting, remounting and making more modifications, //
+// we get the 2nd and 3rd unique GPS locations! Note also, //
+// we symlink (both hard and soft). Check the round_2 files //
+// also saved in hmwk6-prog/hmwk6_fs_sample/ //
+
+root@flo:/data/misc/hmwk6 # ../file_loc d
+Pathname: d.
+Error[2]: No such file or directory
+
+255|root@flo:/data/misc/hmwk6 # touch d
+
+root@flo:/data/misc/hmwk6 # ../file_loc d
+Pathname: d.
+Latitude: 40.802979
+Longitude: -73.956356
+Accuracy: 23.919001
+Age: 378
+URL: https://www.google.com/maps/@40.802979,-73.956356,15z
+
+root@flo:/data/misc/hmwk6 # ln -s d z
+
+root@flo:/data/misc/hmwk6 # ls -l
+-rw-rw-rw- root     root            0 2015-12-14 18:57 a
+drwxrwxrwx root     root              2015-12-14 18:58 abcd
+-rw-rw-rw- root     root            0 2015-12-14 18:57 b
+-rw-rw-rw- root     root           19 2015-12-14 19:05 c
+-rw-rw-rw- root     root            0 2015-12-14 20:23 d
+-rw-rw-rw- root     root           19 2015-12-14 19:05 file
+drwx------ root     root              2015-12-14 18:47 lost+found
+lrwxrwxrwx root     root              2015-12-14 20:24 z -> d
+
+root@flo:/data/misc/hmwk6 # ../file_loc d
+Pathname: d.
+Latitude: 40.802979
+Longitude: -73.956356
+Accuracy: 23.919001
+Age: 378
+URL: https://www.google.com/maps/@40.802979,-73.956356,15z
+
+root@flo:/data/misc/hmwk6 # ../file_loc z
+Pathname: z.
+Latitude: 40.802979
+Longitude: -73.956356
+Accuracy: 23.919001
+Age: 378
+URL: https://www.google.com/maps/@40.802979,-73.956356,15z
+
+root@flo:/data/misc/hmwk6 # ../gpsd
+root@flo:/data/misc/hmwk6 # ln -s d w
+root@flo:/data/misc/hmwk6 # ../file_loc w
+Pathname: w.
+Latitude: 40.802979
+Longitude: -73.956356
+Accuracy: 23.919001
+Age: 378
+URL: https://www.google.com/maps/@40.802979,-73.956356,15z
+
+root@flo:/data/misc/hmwk6 # ../file_loc d
+Pathname: d.
+Latitude: 40.802979
+Longitude: -73.956356
+Accuracy: 23.919001
+Age: 378
+URL: https://www.google.com/maps/@40.802979,-73.956356,15z
+
+root@flo:/data/misc/hmwk6 # ps | grep gpsd
+root      4417  1     876    156   c009a470 0004f6dc S ../gpsd
+
+root@flo:/data/misc/hmwk6 # ../file_loc .
+Pathname: ..
+Latitude: 40.802987
+Longitude: -73.956371
+Accuracy: 24.414000
+Age: 350341798
+URL: https://www.google.com/maps/@40.802987,-73.956371,15z
+
+// As a last example, we change permissions and try file_loc. //
+//  See _round_3 tests in hmwk6-prog/hmwk6_fs_sample/ for   //
+//   a repetition of all hmwk6 file loc and age readings  //
+// (they should not have changed from the previous files) //
+
+root@flo:/data/misc # ./file_loc hmwk6/file
+Pathname: hmwk6/file.
+Latitude: 40.802966
+Longitude: -73.956366
+Accuracy: 30.000000
+Age: 1
+URL: https://www.google.com/maps/@40.802966,-73.956366,15z
+
+root@flo:/data/misc # chmod 222 hmwk6/file
+
+root@flo:/data/misc # ./file_loc hmwk6/file
+Pathname: hmwk6/file.
+Error[13]: Permission denied
+
+255|root@flo:/data/misc #
+
+// We save the most up-to-date hmwk6.fs image as hmwk6-3.fs //
+
