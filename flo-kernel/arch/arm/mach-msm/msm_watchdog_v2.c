@@ -65,7 +65,7 @@ struct msm_watchdog_data {
  * msm_watchdog.enable=1 to enable the watchdog
  * By default watchdog is turned on
  */
-static int enable = 1;
+static int enable = 0;
 module_param(enable, int, 0);
 
 /*
