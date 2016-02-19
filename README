@@ -60,7 +60,7 @@ fs/ext4/gps.h, gps.c:
         that we simply memcpy everywhere and do not worry about endian-
         ness of the data. Data swizzling is implemented in the _ext4
         (fs/ext4/gps.h, gps.c) functions, since those are executed as part of
-        inode_operations and therefore wherever we write to the disk, from
+        inode_operations and therefore whenever we write to the disk, from
         which the data can be ported and read by another architecture.
         Therefore, the most important thing is to ensure that endianness of 
         disk write is selected and writing/reading order for the specific
@@ -115,7 +115,7 @@ fs/open.c:
     implements get_path_gps_aware_inode_data, which uses get_filp_open()
     from fs/open.c. get_path_gps_aware_inode_data:
         first gets a reference to file at pathname (returning pointer)
-        with flags O_PATH (which do not allow very limited access to
+        with flags O_PATH (which only allows very limited access to
         the file), using do_filp_open().
 - - we close the file after we are done reading filesystem info
     and assume this does the job of "adequately" protecting the 
@@ -139,10 +139,11 @@ To summarize, the primary ext4 changes are added as follows:
 Note: we disabled watchdog, which is a mechanism (process) that triggers
 a system shutdown if it finds that any of the other processes are hogging
 system resources. This we found makes it easier to test, especially if
-the device is connected with a USB cable for extended periods of time,
-and may also have to do with the fact that the daemon is writing
-continuously to the disk struct, although ths doesn't necessarily
-imply continuous IO.
+the device is connected with a USB cable for extended periods of time. It
+would have nothing to do with the changes made to ext4 fs since inodes are
+only updated with gps location and age whenever an operation is applied to
+them, which is modifying them already (so we do not make these changes to
+the inodes more frequent - hence hypothetically requiring more IO).
 
 SAMPLE OUTPUT OF file_loc in the creation of different files:
 =============================================================
