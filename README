@@ -29,6 +29,11 @@ kernel/gps.c:
 
 PART II:
 
+Note this is certainly not the most elegant solution. It would have been
+preferable to add the new gps coordinate and timestamp data members to
+the fs/ext4/ext4.h "in-memory" ext4_inode_info struct rather than the lower
+level "on-disk" ext4_inode struct itself.
+
 include/linux/fs.h:
     declares (vfs) inode_operations interface additions and a
     gps_aware_inode (ext4) kernel utility funciton for use within the
@@ -133,8 +138,11 @@ To summarize, the primary ext4 changes are added as follows:
 
 Note: we disabled watchdog, which is a mechanism (process) that triggers
 a system shutdown if it finds that any of the other processes are hogging
-system resources. This makes it easier to test, especially if the device
-is connected with a USB cable for extended periods of time.
+system resources. This we found makes it easier to test, especially if
+the device is connected with a USB cable for extended periods of time,
+and may also have to do with the fact that the daemon is writing
+continuously to the disk struct, although ths doesn't necessarily
+imply continuous IO.
 
 SAMPLE OUTPUT OF file_loc in the creation of different files:
 =============================================================
