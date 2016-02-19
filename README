@@ -133,8 +133,8 @@ To summarize, the primary ext4 changes are added as follows:
 
 Note: we disabled watchdog, which is a mechanism (process) that triggers
 a system shutdown if it finds that any of the other processes are hogging
-system resources. This makes it easier to test, and in case of "extended"
-proc-maps may be necessary.
+system resources. This makes it easier to test, especially if the device
+is connected with a USB cable for extended periods of time.
 
 SAMPLE OUTPUT OF file_loc in the creation of different files:
 =============================================================
