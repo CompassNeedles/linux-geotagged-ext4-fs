@@ -3,7 +3,7 @@ Author: Sami Mourad
 CONFIG_GPSFS:
     enabled by default.
     defined in arch/arm/Kconfig.
-    used to add and compile in kernel changes made to the ext FS.
+    used to add and compile in kernel changes made to the ext4 FS.
 
 PART I:
 
