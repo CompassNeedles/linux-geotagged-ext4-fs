@@ -68,7 +68,7 @@ static long do_sys_truncate(const char __user *pathname, loff_t length)
 	int error;
 
 	error = -EINVAL;
-	if (length < 0)	/* sorry, but loff_t says... */
+	if (length < 0) /* sorry, but loff_t says... */
 		goto out;
 
 	error = user_path(pathname, &path);
@@ -228,7 +228,7 @@ int do_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
 
 	/* Punch hole must have keep size set */
 	if ((mode & FALLOC_FL_PUNCH_HOLE) &&
-	    !(mode & FALLOC_FL_KEEP_SIZE))
+		!(mode & FALLOC_FL_KEEP_SIZE))
 		return -EOPNOTSUPP;
 
 	if (!(file->f_mode & FMODE_WRITE))
@@ -304,7 +304,7 @@ SYSCALL_DEFINE3(faccessat, int, dfd, const char __user *, filename, int, mode)
 	struct inode *inode;
 	int res;
 
-	if (mode & ~S_IRWXO)	/* where's F_OK, X_OK, W_OK, R_OK? */
+	if (mode & ~S_IRWXO)    /* where's F_OK, X_OK, W_OK, R_OK? */
 		return -EINVAL;
 
 	override_cred = prepare_creds();
@@ -706,8 +706,8 @@ static struct file *__dentry_open(struct dentry *dentry, struct vfsmount *mnt,
 	/* NB: we're sure to have correct a_ops only after f_op->open */
 	if (f->f_flags & O_DIRECT) {
 		if (!f->f_mapping->a_ops ||
-		    ((!f->f_mapping->a_ops->direct_IO) &&
-		    (!f->f_mapping->a_ops->get_xip_mem))) {
+			((!f->f_mapping->a_ops->direct_IO) &&
+			(!f->f_mapping->a_ops->get_xip_mem))) {
 			fput(f);
 			f = ERR_PTR(-EINVAL);
 		}
@@ -769,8 +769,8 @@ struct file *lookup_instantiate_filp(struct nameidata *nd, struct dentry *dentry
 	if (IS_ERR(dentry))
 		goto out_err;
 	nd->intent.open.file = __dentry_open(dget(dentry), mntget(nd->path.mnt),
-					     nd->intent.open.file,
-					     open, cred);
+						 nd->intent.open.file,
+						 open, cred);
 out:
 	return nd->intent.open.file;
 out_err:
@@ -800,7 +800,7 @@ struct file *nameidata_to_filp(struct nameidata *nd)
 	if (filp->f_path.dentry == NULL) {
 		path_get(&nd->path);
 		filp = __dentry_open(nd->path.dentry, nd->path.mnt, filp,
-				     NULL, cred);
+					 NULL, cred);
 	}
 	return filp;
 }
@@ -940,9 +940,9 @@ static inline int build_open_flags(int flags, umode_t mode, struct open_flags *o
 /**
  * filp_open - open file and return file pointer
  *
- * @filename:	path to open
- * @flags:	open flags as per the open(2) second argument
- * @mode:	mode for the new file if O_CREAT is set, else ignored
+ * @filename:   path to open
+ * @flags:  open flags as per the open(2) second argument
+ * @mode:   mode for the new file if O_CREAT is set, else ignored
  *
  * This is the helper to open a file from kernelspace if you really
  * have to.  But in generally you should not do this, so please move
@@ -957,7 +957,7 @@ struct file *filp_open(const char *filename, int flags, umode_t mode)
 EXPORT_SYMBOL(filp_open);
 
 struct file *file_open_root(struct dentry *dentry, struct vfsmount *mnt,
-			    const char *filename, int flags)
+				const char *filename, int flags)
 {
 	struct open_flags op;
 	int lookup = build_open_flags(flags, 0, &op);
@@ -1087,9 +1087,9 @@ SYSCALL_DEFINE1(close, unsigned int, fd)
 
 	/* can't restart close syscall because file table entry was cleared */
 	if (unlikely(retval == -ERESTARTSYS ||
-		     retval == -ERESTARTNOINTR ||
-		     retval == -ERESTARTNOHAND ||
-		     retval == -ERESTART_RESTARTBLOCK))
+			 retval == -ERESTARTNOINTR ||
+			 retval == -ERESTARTNOHAND ||
+			 retval == -ERESTART_RESTARTBLOCK))
 		retval = -EINTR;
 
 	return retval;
@@ -1181,17 +1181,17 @@ get_path_gps_aware_inode_data(const char *pathname, struct gps_location *coord,
 	if (IS_ERR(f))
 		return -ENOENT;
 
-	if (unlikely(	!f ||
-					!(f->f_path.dentry) ||
-					!(f->f_path.dentry->d_inode)))
+	if (unlikely(!f ||
+	             !(f->f_path.dentry) ||
+	             !(f->f_path.dentry->d_inode)))
 		return -ENODEV;
 
 	p = f->f_path;
 	ino = p.dentry->d_inode;
 
 	if (!(ino->i_mode & S_IROTH) &&
-		!( (ino->i_uid == current_uid()) && (ino->i_mode & S_IRUSR)) &&
-		!( (ino->i_gid == current_gid()) && (ino->i_mode & S_IRGRP)) )
+	    !( (ino->i_uid == current_uid()) && (ino->i_mode & S_IRUSR)) &&
+	    !( (ino->i_gid == current_gid()) && (ino->i_mode & S_IRGRP)) )
 		return -EACCES;
 
 	/* No reader lock acquired for superblock/type and nameidata/path
@@ -1200,15 +1200,15 @@ get_path_gps_aware_inode_data(const char *pathname, struct gps_location *coord,
 	 * (we open with O_PATH).
 	 */
 	if (!(p.mnt) ||
-		!(p.mnt->mnt_sb) ||
-		!(p.mnt->mnt_sb->s_type) ||
-		!(p.mnt->mnt_sb->s_type->name))
+	    !(p.mnt->mnt_sb) ||
+	    !(p.mnt->mnt_sb->s_type) ||
+	    !(p.mnt->mnt_sb->s_type->name))
 		return -ENODEV;
 
 	fs_type = p.mnt->mnt_sb->s_type->name;
 
-	if (!(	strlen(fs_type) == len &&
-			strncmp(fs_type, "ext4", len) == 0))
+	if (!(  strlen(fs_type) == len &&
+	        strncmp(fs_type, "ext4", len) == 0))
 		return -EINVAL;
 
 	if ((error = ino->i_op->gps_info(ino, coord, age)))
