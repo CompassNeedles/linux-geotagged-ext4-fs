@@ -7,7 +7,7 @@ CONFIG_GPSFS:
 
 PART I:
 
-gpsd:
+userspace/gpsd:
     Daemon code, activated if DBG_P1 is not set.
         If debug is set, deamon activity occurs in the shell
         foreground and prints periodically from within the
