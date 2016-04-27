@@ -1,9 +1,8 @@
 Author: Sami Mourad
 
-flo-kernel/arch/arm/configs/flo_defconfig:
+flo-kernel/arch/arm/Kconfig:
     CONFIG_GPSFS:
         enabled by default.
-        defined in arch/arm/Kconfig.
         used to add and compile in kernel changes made to the ext4 FS.
 
 PART I:
@@ -18,7 +17,7 @@ userspace/gpsd:
     in daemon mode all standard "stream" descriptors are closed (0,1,2)
         error messages are buffered to a gpsd log file.
 
-kernel/gps.c:
+flo-kernel/kernel/gps.c:
     implements interface defined in header file include/linux/gps.h.
     defines set_gps_location syscall called by gpsd.
     updates kernel with device current location, also storing the update
@@ -35,12 +34,12 @@ preferable to add the new gps coordinate and timestamp data members to
 the fs/ext4/ext4.h "in-memory" ext4_inode_info struct rather than the lower
 level "on-disk" ext4_inode struct itself.
 
-include/linux/fs.h:
+flo-kernel/include/linux/fs.h:
     declares (vfs) inode_operations interface additions and a
     gps_aware_inode (ext4) kernel utility funciton for use within the
     get_gps_location syscall of part 3.
 
-fs/ext4/gps.h, gps.c:
+flo-kernel/fs/ext4/gps.h, gps.c:
     implements the gps-ext4 interface functions added to the set of
         inode_operations (namely, set_gps_location_ext4(),
         get_gps_location_ext4() and gps_info_ext4()).
@@ -93,14 +92,14 @@ fs/ext4/gps.h, gps.c:
             ext4_new_inode(), therefore we do not set_gps_location at
             all in ext4/namei.c.
 
-fs/ext4/super.c:
+flo-kernel/fs/ext4/super.c:
     adds case: mount option gps_aware_inode in handle_mount_opt() also
     updating mount options, option enum and the match table tokens.
     Mount flag is defined in fs/ext4/ext4.h.
 
 PART III:
 
-kernel/gps.c:
+flo-kernel/kernel/gps.c:
     implements syscall "get_gps_location".
     calls include/linux/fs.h fs/ utility function (which checks for
         ext4 and gps_aware_inode after searching for the inode given
@@ -112,7 +111,7 @@ kernel/gps.c:
         are age and userspace gps location struct updated with the ext4
         fs object's gps_location.
 
-fs/open.c:
+flo-kernel/fs/open.c:
     implements get_path_gps_aware_inode_data, which uses get_filp_open()
     from fs/open.c. get_path_gps_aware_inode_data:
         first gets a reference to file at pathname (returning pointer)
