@@ -147,9 +147,12 @@ the device is connected with a USB cable for extended periods of time
 (because that seems to trigger watchdog - why!?).
 
 We do not expect that our changes are causing watchdog to get triggered,
-since we did not explicitly make inode operations more frequent. Rather,
-we inserted the data members to the inode struct, and inserted code to
-update them in functions which we do not explicitly call elsewhere.
+since we did not explicitly make inode operations more time consuming
+(neither did we make them more frequent if that matters).
+We inserted the data members to the inode struct, and inserted code to
+update them in functions which we do not explicitly call elsewhere, and
+our additions simply read gps coordinates and timestamp from the gps
+struct and update the inode struct with that data (O(1) operation).
 
 With the changes we made, gps coordinate and timestamp data are
 only updated when modifications are made to the "on-disk" ext4_inode
