@@ -2408,7 +2408,7 @@ config ARCH_SUSPEND_POSSIBLE
 config ARM_CPU_SUSPEND
 	def_bool PM_SLEEP
 
-config GEO_FS
+config GPSFS
 	bool
 	default y
 	help
