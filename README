@@ -1,5 +1,14 @@
 Author: Sami Mourad
 
+This file summarizes the changes made to the default flo-kernel as
+well as implementation of the userspace daemon that passes the gps
+data from the Android application to the kernel itself (this data
+is then made accessible to any userspace program making use of the
+geo-tagged ext4 filesystem).
+
+The summaries are provided for each file, and for each PART of the
+assignment that can be considered a separate stage in the implementation.
+
 flo-kernel/arch/arm/Kconfig:
     CONFIG_GPSFS:
         enabled by default.
@@ -8,8 +17,8 @@ flo-kernel/arch/arm/Kconfig:
 PART I:
 
 userspace/gpsd:
-    Daemon code, activated if DBG_P1 is not set.
-        If debug is set, deamon activity occurs in the shell
+    Daemon code, activated if DBG_P1 (debug part 1) is not set.
+        If DBG_P1 is set, deamon activity occurs in the shell
         foreground and prints periodically from within the
         poll function (i.e. program is executed normally).
     polls location every 10^6 microseconds (i.e. every second).
@@ -18,8 +27,8 @@ userspace/gpsd:
         error messages are buffered to a gpsd log file.
 
 flo-kernel/kernel/gps.c:
-    implements interface defined in header file include/linux/gps.h.
-    defines set_gps_location syscall called by gpsd.
+    implements interface defined in header file flo-kernel/include/linux/gps.h.
+    defines set_gps_location syscall used by gpsd.
     updates kernel with device current location, also storing the update
         time at which this happens (so that whenever the fs member is
         modified - and only then, the age of the coordinates is updated
@@ -28,11 +37,6 @@ flo-kernel/kernel/gps.c:
     (i.e. if uid is 0).
 
 PART II:
-
-Note this is certainly not the most elegant solution. It would have been
-preferable to add the new gps coordinate and timestamp data members to
-the fs/ext4/ext4.h "in-memory" ext4_inode_info struct rather than the lower
-level "on-disk" ext4_inode struct itself.
 
 flo-kernel/include/linux/fs.h:
     declares (vfs) inode_operations interface additions and a
@@ -137,13 +141,32 @@ To summarize, the primary ext4 changes are added as follows:
     where resetting mtime = ctime = current time...
 
 Note: we disabled watchdog, which is a mechanism (process) that triggers
-a system shutdown if it finds that any of the other processes are hogging
+a system shutdown if it finds that any of the other processes are "hogging"
 system resources. This we found makes it easier to test, especially if
-the device is connected with a USB cable for extended periods of time. It
-would have nothing to do with the changes made to ext4 fs since inodes are
-only updated with gps location and age whenever an operation is applied to
-them, which is modifying them already (so we do not make these changes to
-the inodes more frequent - hence hypothetically requiring more IO).
+the device is connected with a USB cable for extended periods of time
+(because that seems to trigger watchdog - why!?).
+
+We do not expect that our changes are causing watchdog to get triggered,
+since we did not explicitly make inode operations more frequent. Rather,
+we inserted the data members to the inode struct, and inserted code to
+update them in functions which we do not explicitly call elsewhere.
+
+With the changes we made, gps coordinate and timestamp data are
+only updated when modifications are made to the "on-disk" ext4_inode
+struct. These modifications are executed whenever the corresponding
+functions (e.g. ext4_do_update_inode) are called.
+Our assumption is that this data is always updated and in memory
+(even though ext4_inode_info is meant to serve as the "in-memory" inode
+struct, but perhaps it is only an auxiliary inode struct for additional
+metadata). The teacher assistant argued that it would have been a more elegant
+solution to include the new gps coordinate and timestamp data members in the
+"in-memory" struct rather than the ext4_inode struct itself. But then what is
+the mechanism used to update the "on-disk" struct with that info to make sure
+it gets written to the disk properly? This would have made the implementation
+more complex as we would have had to make sure that the physical update does
+happen (which most likely implies making the same changes in the "on-disk"
+struct). Why do double the work?!
+
 
 SAMPLE OUTPUT OF file_loc in the creation of different files:
 =============================================================
