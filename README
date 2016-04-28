@@ -152,7 +152,8 @@ since we did not explicitly make inode operations more time consuming
 We inserted the data members to the inode struct, and inserted code to
 update them in functions which we do not explicitly call elsewhere, and
 our additions simply read gps coordinates and timestamp from the gps
-struct and update the inode struct with that data (O(1) operation).
+struct and update the inode struct with that data (O(1) operation,
+we do use a lock but surely cause no deadlocks, no contention, etc.).
 
 With the changes we made, gps coordinate and timestamp data are
 only updated when modifications are made to the "on-disk" ext4_inode
